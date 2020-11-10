@@ -1,1 +1,1 @@
-# inedss-convert-case-status
+These scripts are designed to be used by local health department case investigators in Illinois. The scripts use the R Selenium package to mimic a case investigator changing a case status in I-NEDSS. The script is currently designed to change the case status of antigen-only positive COVID-19 cases from "confirmed" (default assigned during the auto-create process) to the correct status of "probable".
