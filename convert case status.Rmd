@@ -1,0 +1,70 @@
+---
+title: ''
+output: html_document
+---
+
+This script will convert the case status of antigen-only positive COVID-19 cases from "confirmed" to "probable". Prior to running the script, download the report "COVID Lab Test Type" from Business Objects and ensure it is stored in your Downloads folder. Change 'downloads_path' below to match the file path of your Downloads folder. If using a Windows machine, be sure to convert backward slashes to forward slashes in the file path.
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(RSelenium)
+library(magrittr)
+library(keyring)
+
+#Source helper rselenium functions from github
+devtools::source_url("https://github.com/hsteinberg/ccdph-functions/blob/master/general-use-rselenium-functions.R?raw=TRUE")
+devtools::source_url("https://github.com/hsteinberg/ccdph-functions/blob/master/inedss-rselenium-functions.R?raw=TRUE")
+
+downloads_path <- "C:/Users/kbemis/Downloads"
+
+
+```
+
+Use the Business Objects report to identify which confirmed cases have an antigen test but no PCR test.
+
+```{r prepare_data}
+
+#Import BO report and remove duplicates
+cases_to_update <- read_csv(paste0(downloads_path, "/COVID Lab Test Type.csv")) %>%
+  set_colnames(c("state_case_number", "test_types", "test_methods")) %>%
+  distinct()
+
+#Convert to observation level data set
+cases_to_update_wide <- cases_to_update %>%
+  group_by(state_case_number) %>%
+  summarize(all_test_types = paste(test_types, collapse = "-"),
+            all_test_methods = paste(test_methods, collapse = "-")) %>%
+  ungroup()
+
+#Filter to cases with antigen tests and flag if a pcr test is also present
+antigen_cases <- cases_to_update_wide %>%
+  filter(grepl("2 ag|antigen|sofia|sophia", all_test_types, ignore.case = T)) %>%
+  mutate(has_pcr = grepl("rna|pcr|nucleic|naa|nat|abbott id|gene|molecular|ORF1ab", all_test_types, ignore.case = T))
+
+#Filter to antigen cases with no pcr test
+antigen_no_pcr <- filter(antigen_cases, has_pcr == F)
+
+
+```
+
+Use Selenium to log into INEDSS, search each identified case, and change the case status from confirmed to probable.
+
+```{r update_status}
+
+#set inedss login credentials- only needs to be done once per user per computer
+#key_set("idph_username") #IDPH username
+#key_set("idph_portal") #IDPH password
+
+#Start server
+start_server()
+
+#Log in to INEDSS
+login_inedss()
+
+#loop through to search cases and change case status
+
+
+```
+
