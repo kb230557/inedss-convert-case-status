@@ -63,8 +63,49 @@ start_server()
 #Log in to INEDSS
 login_inedss()
 
-#loop through to search cases and change case status
+#loop to search cases and change case status
+continue = TRUE
+counter = 1
+while(continue) {
+  
+  try(for (i in counter:nrow(antigen_no_pcr)) {
+
+    #enter SCN in Dash Board search bar and search
+    enter_text("#idNumber", antigen_no_pcr[i, 1])
+    click(name.is("Search"))
+  
+    #wait for Case Summary page to load
+    wait_page("Case Summary")
+  
+    #Click to open Epidemiologic Data
+    click("fieldset.fieldsetHeader:nth-child(4) > table:nth-child(2) > tbody:nth-child(1) > tr:nth-child(3) > td:nth-child(2) > a:nth-child(1)")
+    wait_page("Epidemiologic Data")
+  
+    #Change case status to probable and save section
+    select_drop_down("#case", "Probable")
+    click(name.is("save"))
+  
+    #Close case
+    wait_page("Case Summary")
+    click(value.is("Close"))
+  
+    #Wait for page to load then return to Dash Board
+    wait_page("My Cases")
+    click("th.dataTableNotSelected:nth-child(1) > a:nth-child(1)")
+    wait_page("Dash Board")
+    
+    #Increment counter
+    counter <- counter + 1
+  
+  })
+  
+  continue = ifelse(counter <= nrow(antigen_no_pcr), TRUE, FALSE)
+  
+}
 
 
+
+#stop server when finished
+stop_server()
 ```
 
