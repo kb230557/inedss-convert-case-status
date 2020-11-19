@@ -5,6 +5,8 @@ output: html_document
 
 This script will convert the case status of antigen-only positive COVID-19 cases from "confirmed" to "probable". Prior to running the script, download the report "COVID Lab Test Type" from Business Objects and ensure it is stored in your Downloads folder. Change 'downloads_path' below to match the file path of your Downloads folder. If using a Windows machine, be sure to convert backward slashes to forward slashes in the file path.
 
+If running the script for the first time on a given computer, also run the commented out lines on line 25-26 and 66-67.
+
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 
@@ -18,6 +20,10 @@ devtools::source_url("https://github.com/hsteinberg/ccdph-functions/blob/master/
 devtools::source_url("https://github.com/hsteinberg/ccdph-functions/blob/master/inedss-rselenium-functions.R?raw=TRUE")
 
 downloads_path <- "C:/Users/kbemis/Downloads"
+
+#Create empty already done file -- ONLY NEEDS TO BE DONE THE FIRST TIME RUNNING THE SCRIPT ON A COMPUTER
+# already_done <- data.frame(state_case_number = character(), date_updated = as.Date(character()), stringsAsFactors = F)
+# saveRDS(already_done, paste0("recently_updated.rds")
 
 
 ```
@@ -43,8 +49,12 @@ antigen_cases <- cases_to_update_wide %>%
   filter(grepl("2 ag|antigen|sofia|sophia", all_test_types, ignore.case = T)) %>%
   mutate(has_pcr = grepl("rna|pcr|nucleic|naa|nat|abbott id|gene|molecular|ORF1ab", all_test_types, ignore.case = T))
 
-#Filter to antigen cases with no pcr test
-antigen_no_pcr <- filter(antigen_cases, has_pcr == F)
+#To account for BO lag, import list of recent cases already updated
+already_done <- readRDS("recently_updated.rds") %>%
+  filter(date_updated > (Sys.Date() - 5))
+
+#Filter to antigen cases with no pcr test that haven't already been updated
+antigen_no_pcr <- filter(antigen_cases, has_pcr == F & !(state_case_number %in% already_done$state_case_number))
 
 
 ```
@@ -104,8 +114,15 @@ while(continue) {
 }
 
 
-
 #stop server when finished
 stop_server()
+
+#update already done file
+done_today <- antigen_no_pcr %>%
+  select(state_case_number) %>%
+  mutate(date_updated = Sys.Date())
+
+saveRDS(rbind(already_done, done_today), "recently_updated.rds")
+
 ```
 
