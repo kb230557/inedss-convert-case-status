@@ -33,7 +33,7 @@ Use the Business Objects report to identify which confirmed cases have an antige
 ```{r prepare_data}
 
 #Import BO report and remove duplicates
-cases_to_update <- read_csv(paste0(downloads_path, "/COVID Lab Test Type.csv")) %>%
+cases_to_update <- read_csv(paste0(downloads_path, "/COVID_Lab_Test_Type.csv")) %>%
   set_colnames(c("state_case_number", "test_types", "test_methods")) %>%
   distinct()
 
@@ -49,9 +49,9 @@ antigen_cases <- cases_to_update_wide %>%
   filter(grepl("2 ag|antigen|sofia|sophia", all_test_types, ignore.case = T)) %>%
   mutate(has_pcr = grepl("rna|pcr|nucleic|naa|nat|abbott id|gene|molecular|ORF1ab", all_test_types, ignore.case = T))
 
-#To account for BO lag, import list of recent cases already updated
+#To account for BO lag, import list of cases already updated in the last 7 days
 already_done <- readRDS("recently_updated.rds") %>%
-  filter(date_updated > (Sys.Date() - 5))
+  filter(date_updated > (Sys.Date() - 7))
 
 #Filter to antigen cases with no pcr test that haven't already been updated
 antigen_no_pcr <- filter(antigen_cases, has_pcr == F & !(state_case_number %in% already_done$state_case_number))
@@ -95,12 +95,8 @@ while(continue) {
     select_drop_down("#case", "Probable")
     click(name.is("save"))
   
-    #Close case
+    #Wait for Case Summary page to load then return to Dash Board
     wait_page("Case Summary")
-    click(value.is("Close"))
-  
-    #Wait for page to load then return to Dash Board
-    wait_page("My Cases")
     click("th.dataTableNotSelected:nth-child(1) > a:nth-child(1)")
     wait_page("Dash Board")
     
@@ -109,7 +105,7 @@ while(continue) {
   
   })
   
-  continue = ifelse(counter <= nrow(antigen_no_pcr), TRUE, FALSE)
+  continue = ifelse(counter < nrow(antigen_no_pcr), TRUE, FALSE)
   
 }
 
@@ -117,12 +113,21 @@ while(continue) {
 #stop server when finished
 stop_server()
 
+```
+
+Execute final steps to prepare for the next run of the program.
+
+```{r clean_up}
+
 #update already done file
 done_today <- antigen_no_pcr %>%
   select(state_case_number) %>%
   mutate(date_updated = Sys.Date())
 
 saveRDS(rbind(already_done, done_today), "recently_updated.rds")
+
+#remove original download
+unlink(paste0(downloads_path, "/COVID_Lab_Test_Type.csv"))
 
 ```
 
