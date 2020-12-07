@@ -23,7 +23,7 @@ downloads_path <- "C:/Users/kbemis/Downloads"
 
 #Create empty already done file -- ONLY NEEDS TO BE DONE THE FIRST TIME RUNNING THE SCRIPT ON A COMPUTER
 # already_done <- data.frame(state_case_number = character(), date_updated = as.Date(character()), stringsAsFactors = F)
-# saveRDS(already_done, paste0("recently_updated.rds")
+# saveRDS(already_done, "already_done.rds")
 
 
 ```
@@ -49,9 +49,8 @@ antigen_cases <- cases_to_update_wide %>%
   filter(grepl("2 ag|antigen|sofia|sophia", all_test_types, ignore.case = T)) %>%
   mutate(has_pcr = grepl("rna|pcr|nucleic|naa|nat|abbott id|gene|molecular|ORF1ab", all_test_types, ignore.case = T))
 
-#To account for BO lag, import list of cases already updated in the last 7 days
-already_done <- readRDS("recently_updated.rds") %>%
-  filter(date_updated > (Sys.Date() - 7))
+#Import list of cases already updated (case status will only ever be changed once)
+already_done <- readRDS("already_done.rds") 
 
 #Filter to antigen cases with no pcr test that haven't already been updated
 antigen_no_pcr <- filter(antigen_cases, has_pcr == F & !(state_case_number %in% already_done$state_case_number))
@@ -139,7 +138,7 @@ done_today <- antigen_no_pcr %>%
   select(state_case_number) %>%
   mutate(date_updated = Sys.Date())
 
-saveRDS(rbind(already_done, done_today), "recently_updated.rds")
+saveRDS(rbind(already_done, done_today), "already_done.rds")
 
 #remove original download
 unlink(paste0(downloads_path, "/COVID_Lab_Test_Type.csv"))
